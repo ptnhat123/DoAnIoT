@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Hệ thống Giám sát Đồng hồ Nước</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body class="flex h-screen bg-gray-100 font-sans">
+    <!-- Sidebar -->
+    <div class="bg-cyan-800 text-white w-64 flex flex-col p-6 shadow-lg">
+        <div class="flex items-center mb-8">
+            <i class="fas fa-tachometer-alt text-2xl mr-3"></i>
+            <span class="text-xl font-bold">Water Meter SCADA</span>
+        </div>
+        <nav class="space-y-4">
+            <a href="#" class="flex items-center text-lg hover:bg-cyan-700 p-2 rounded">
+                <i class="fas fa-home mr-3"></i> Dashboard
+            </a>
+            <a href="#" class="flex items-center text-lg hover:bg-cyan-700 p-2 rounded">
+                <i class="fas fa-clock mr-3"></i> Data History
+            </a>
+            <a href="#" class="flex items-center text-lg hover:bg-cyan-700 p-2 rounded">
+                <i class="fas fa-bell mr-3"></i> Alerts
+            </a>
+            <a href="#" class="flex items-center text-lg hover:bg-cyan-700 p-2 rounded">
+                <i class="fas fa-file-export mr-3"></i> Excel Export
+            </a>
+        </nav>
+    </div>
+
+    <!-- Main Content -->
+    <div class="flex-1 flex flex-col">
+        <!-- Header -->
+        <header class="bg-gray-800 text-white p-4 flex justify-between items-center shadow-md">
+            <h1 class="text-2xl font-semibold">Hệ thống Giám sát Đồng hồ Nước</h1>
+            <div class="flex items-center space-x-4">
+                <span id="connection" class="flex items-center">
+                    <i class="fas fa-circle text-green-500 mr-2"></i> Connected
+                </span>
+                <span id="datetime" class="text-lg">28/02/2025 - 14:30:00</span>
+            </div>
+        </header>
+
+        <!-- Content -->
+        <main class="flex-1 p-6 grid grid-cols-3 gap-6">
+            <!-- Stream Section -->
+            <div class="col-span-2 bg-white rounded-lg shadow-lg p-4 flex flex-col">
+                <h2 class="text-xl font-semibold mb-4 text-gray-700">Live Stream</h2>
+                <img id="stream" src="http://192.168.1.100/stream" alt="Camera Stream" class="w-full h-80 object-cover rounded-md mb-4">
+                <div class="text-lg text-gray-600">
+                    <button onclick="capture()" class="mt-2 bg-cyan-600 text-white px-4 py-2 rounded hover:bg-cyan-700">
+                        Chụp & Đọc
+                    </button>
+                </div>
+            </div>
+
+            <!-- OCR & Status Section -->
+            <div class="col-span-1 flex flex-col space-y-6">
+                <!-- OCR Result -->
+                <div class="bg-white rounded-lg shadow-lg p-4">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-xl font-semibold text-gray-700">OCR Result</h2>
+                        <button class="bg-gray-200 hover:bg-gray-300 text-gray-700 px-3 py-1 rounded-md" id="openOCRSettingsButton">
+                            <i class="fas fa-cog"></i> Cài đặt
+                        </button>
+                    </div>
+                    <p class="text-lg text-gray-600">Số vừa đọc: <span id="ocr-result" class="font-bold">N/A</span></p>
+                    <p class="text-sm text-gray-500">Cập nhật: <span id="last-update">N/A</span></p>
+                    <button class="mt-2 bg-cyan-600 text-white px-4 py-2 rounded hover:bg-cyan-700" id="openParameterSettingsButton">
+                        Điều chỉnh thông số
+                    </button>
+                </div>
+
+                <!-- Quick Status -->
+                <div class="bg-white rounded-lg shadow-lg p-4">
+                    <h2 class="text-xl font-semibold mb-4 text-gray-700">Trạng thái</h2>
+                    <p class="text-gray-600">IP Camera: 192.168.1.100</p>
+                    <p class="text-gray-600">Tốc độ: 20 FPS</p>
+                    <p class="text-gray-600">Trạng thái OCR: <span id="ocr-status">Idle</span></p>
+                </div>
+            </div>
+        </main>
+
+        <!-- Footer -->
+        <footer class="bg-gray-800 text-white p-4 grid grid-cols-2 text-right">
+            <div class="text-left">Đồ án Tốt nghiệp - [Tên bạn]</div>
+            <div>Date/Time: <span id="footer-time">28/02/2025 - 14:30:00</span></div>
+        </footer>
+    </div>
+
+    <!-- OCR Settings Modal -->
+    <div id="ocrSettingsModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+        <div class="bg-white rounded-lg p-6 w-96">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-semibold">Cài đặt OCR</h3>
+                <button class="text-gray-500 hover:text-gray-700" id="closeOCRSettingsButton">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Ngưỡng độ sáng</label>
+                    <input type="range" min="0" max="255" value="128" class="w-full" id="thresholdValue">
+                    <div class="flex justify-between text-sm text-gray-500">
+                        <span>0</span>
+                        <span id="thresholdDisplay">128</span>
+                        <span>255</span>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Kích thước kernel</label>
+                    <select id="kernelSize" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                        <option value="3">3x3</option>
+                        <option value="5">5x5</option>
+                        <option value="7">7x7</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Độ tin cậy tối thiểu (%)</label>
+                    <input type="number" min="0" max="100" value="90" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm" id="minConfidence">
+                </div>
+                <div class="flex justify-end space-x-3 mt-6">
+                    <button onclick="closeOCRSettings()" class="px-4 py-2 border rounded-md text-gray-700 hover:bg-gray-50">
+                        Hủy
+                    </button>
+                    <button onclick="saveOCRSettings()" class="px-4 py-2 bg-cyan-600 text-white rounded-md hover:bg-cyan-700" id="saveOCRSettingsButton">
+                        Lưu thay đổi
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Parameter Settings Modal -->
+    <div id="parameterSettingsModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+        <div class="bg-white rounded-lg p-6 w-96">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-semibold">Điều chỉnh thông số</h3>
+                <button onclick="closeParameterSettings()" class="text-gray-500 hover:text-gray-700" id="closeParameterSettingsButton">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Tăng cường độ tương phản</label>
+                    <input type="range" min="0" max="100" value="50" class="w-full" id="contrastEnhancement">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Làm sắc nét ảnh</label>
+                    <input type="range" min="0" max="100" value="50" class="w-full" id="imageSharpening">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Adaptive Threshold</label>
+                    <input type="range" min="0" max="100" value="50" class="w-full" id="adaptiveThreshold">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">CLAHE</label>
+                    <input type="range" min="0" max="100" value="50" class="w-full" id="clahe">
+                </div>
+                <div class="flex justify-end space-x-3 mt-6">
+                    <button onclick="closeParameterSettings()" class="px-4 py-2 border rounded-md text-gray-700 hover:bg-gray-50">
+                        Hủy
+                    </button>
+                    <button onclick="sendParametersToPython()" class="px-4 py-2 bg-cyan-600 text-white rounded-md hover:bg-cyan-700" id="sendParametersButton">
+                        Gửi
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript -->
+    <script src="script.js"></script>
+</body>
+</html>
